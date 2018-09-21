@@ -1,37 +1,18 @@
 const axios = require('axios');
-const express = require('express');
-const server = express();
 const bcrypt = require('bcryptjs');
 const { authenticate } = require('./middlewares');
-const jwt = require('jsonwebtoken');
-const knex = require('knex');
-const dbConfig = require('../knexfile');
-const db = knex(dbConfig.development);
+const dbConfig = require('../database/dbConfig');
+const db = dbConfig;
 module.exports = server => {
   server.post('/api/register', register);
   server.post('/api/login', login);
   server.get('/api/jokes', authenticate, getJokes);
 };
 
-function generateToken(user) {
-  const payload = {
-    username: user.username,
-  };
-
-  const secret = require('../_secrets/keys');
-
-  const options = {
-    expiresIn: '1h',
-    jwtid: secret.jwtKey,
-  };
-
-  return jwt.sign(payload, secret, options);
-}
 
 
 function register(req, res) {
   // implement user registration
-  server.post('/api/register', (req, res) => {
     const creds = req.body;
 
     const hash = bcrypt.hashSync(creds.password, 10);
@@ -46,19 +27,16 @@ function register(req, res) {
           .where({ id })
           .first()
           .then(user => {
-            const token = generateToken(user);
+            const token = authenticate;
             res.status(201).json({ id: user.id, token });
           })
           .catch(err => res.status(500).send(err));
       })
       .catch(err => res.status(500).send(err));
-    
-  });
 }
 
 function login(req, res) {
   // implement user login
-  server.post('/api/login', (req, res) => {
     const creds = req.body;
 
     db('users')
@@ -66,14 +44,13 @@ function login(req, res) {
       .first()
       .then(user => {
         if (user && bcrypt.compareSync(creds.password, user.password)) {
-          const token = generateToken(user);
+          const token = authenticate;
           res.status(200).json({ token });
         } else {
           res.status(401).json({ message: 'Unauthorized' });
         }
       })
       .catch(err => res.status(500).send(err));
-  });
 }
 
 function getJokes(req, res) {
