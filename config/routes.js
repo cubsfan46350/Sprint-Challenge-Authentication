@@ -1,33 +1,47 @@
 const axios = require('axios');
 const bcrypt = require('bcryptjs');
-const { authenticate } = require('./middlewares');
+const { authenticate, jwtKey } = require('./middlewares');
 const dbConfig = require('../database/dbConfig');
 const db = dbConfig;
+const key = require ('../_secrets/keys');
 module.exports = server => {
   server.post('/api/register', register);
   server.post('/api/login', login);
   server.get('/api/jokes', authenticate, getJokes);
 };
 
+function generateToken(user) {
+  const payload = {
+    username: user.username,
+  };
 
+  const secret = key;
+
+  const options = {
+    expiresIn: '1h',
+    jwtid: user.id,
+  };
+  return jwt.sign(payload, secret, options);
+}
 
 function register(req, res) {
   // implement user registration
     const creds = req.body;
-
+    
     const hash = bcrypt.hashSync(creds.password, 10);
     creds.password = hash;
 
     db('users')
       .insert(creds)
       .then(ids => {
-        const id = ids[0];
-
+        const id = ids[0]
+  
         db('users')
           .where({ id })
           .first()
           .then(user => {
-            const token = authenticate;
+            const token = generateToken;
+            console.log(token);
             res.status(201).json({ id: user.id, token });
           })
           .catch(err => res.status(500).send(err));
@@ -44,7 +58,7 @@ function login(req, res) {
       .first()
       .then(user => {
         if (user && bcrypt.compareSync(creds.password, user.password)) {
-          const token = authenticate;
+          const token = generateToken;
           res.status(200).json({ token });
         } else {
           res.status(401).json({ message: 'Unauthorized' });
